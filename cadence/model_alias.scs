@@ -1,0 +1,5 @@
+// Cadence Spectre Model Alias File for GPDK090
+simulator lang=spectre
+
+model nmos1v gpdk090_nmos1v
+model pmos1v gpdk090_pmos1v

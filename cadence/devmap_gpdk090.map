@@ -1,0 +1,6 @@
+-- Device map for gpdk090 (90nm PDK) in Cadence Virtuoso
+devMap := nmos_90nm nmos1v
+propMap := w w l l
+
+devMap := pmos_90nm pmos1v
+propMap := w w l l

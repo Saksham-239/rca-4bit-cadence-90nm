@@ -1,0 +1,31 @@
+# Cadence Virtuoso Lock and Log Files
+*.cdslck
+*.cdslck*
+cds.lib.bak
+*.log
+*.log*
+*.dat
+*.tr0
+*.sw0
+*.valog
+*.run
+artist_states/
+simulation/
+Sim/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# OS Specific
+Thumbs.db
+ehthumbs.db
+.DS_Store
+
+# Temporary editor backups
+*~
+*.swp
+*.swo

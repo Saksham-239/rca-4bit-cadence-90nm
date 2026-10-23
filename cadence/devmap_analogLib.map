@@ -1,0 +1,6 @@
+-- Device map for generic analogLib in Cadence Virtuoso
+devMap := nmos_90nm nmos
+propMap := w w l l
+
+devMap := pmos_90nm pmos
+propMap := w w l l

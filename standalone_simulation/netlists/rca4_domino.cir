@@ -1,0 +1,97 @@
+* 4-Bit RCA Benchmark - DOMINO CMOS 90nm
+.include "/mnt/c/Users/saksh/.gemini/antigravity/scratch/rca_90nm_project/models/ptm_90nm.pm"
+.param VDD_VAL = 1.0V
+Vdd vdd 0 DC 'VDD_VAL'
+
+* Domino Logic 1-Bit Full Adder
+* Precharge PMOS + NMOS Evaluate + Weak Keeper + Output Inverter
+.subckt FA_DOMINO a b cin clk sum cout vdd 0
+
+* --- Domino Carry (10 Transistors) ---
+* Precharge PMOS (Phi=0 -> precharge dyn_cout to VDD)
+Mp_cpre dyn_cout clk vdd vdd pmos_90nm w=420n l=100n
+
+* Weak PMOS Keeper (Gated by cout)
+Mp_ckp dyn_cout cout vdd vdd pmos_90nm w=100n l=100n
+
+* NMOS Evaluate Tree for Cout (Carry = AB + BCin + ACin)
+Mn_ce1 dyn_cout a    n_cev1 0 nmos_90nm w=360n l=100n
+Mn_ce2 n_cev1   b    n_cfoot 0 nmos_90nm w=360n l=100n
+Mn_ce3 dyn_cout cin  n_cev2 0 nmos_90nm w=360n l=100n
+Mn_ce4 n_cev2   a    n_cfoot 0 nmos_90nm w=360n l=100n
+Mn_ce5 n_cev2   b    n_cfoot 0 nmos_90nm w=360n l=100n
+
+* Evaluate Foot Transistor (Clocked by clk)
+Mn_cfoot n_cfoot clk 0 0 nmos_90nm w=360n l=100n
+
+* Static Output Inverter (Monotonic output)
+Mp_cinv cout dyn_cout vdd vdd pmos_90nm w=420n l=100n
+Mn_cinv cout dyn_cout 0 0 nmos_90nm w=120n l=100n
+
+* --- Domino Sum (10 Transistors) ---
+* Precharge PMOS
+Mp_spre dyn_sum clk vdd vdd pmos_90nm w=420n l=100n
+
+* Weak PMOS Keeper
+Mp_skp dyn_sum sum vdd vdd pmos_90nm w=100n l=100n
+
+* Evaluate Tree for Sum (A, B, Cin)
+Mn_se1 dyn_sum a    n_sfoot 0 nmos_90nm w=360n l=100n
+Mn_se2 dyn_sum b    n_sfoot 0 nmos_90nm w=360n l=100n
+Mn_se3 dyn_sum cin  n_sfoot 0 nmos_90nm w=360n l=100n
+Mn_sfoot n_sfoot clk 0 0 nmos_90nm w=360n l=100n
+
+* Output Inverter
+Mp_sinv sum dyn_sum vdd vdd pmos_90nm w=420n l=100n
+Mn_sinv sum dyn_sum 0 0 nmos_90nm w=120n l=100n
+
+.ends FA_DOMINO
+
+* Operand Inputs: A=1111, B=0000
+VA0 a0 0 DC 1.0
+VA1 a1 0 DC 1.0
+VA2 a2 0 DC 1.0
+VA3 a3 0 DC 1.0
+
+VB0 b0 0 DC 0.0
+VB1 b1 0 DC 0.0
+VB2 b2 0 DC 0.0
+VB3 b3 0 DC 0.0
+
+* Carry-In Step Input (Transition 0 -> 1 at 1.0ns)
+Vcin c0 0 PULSE(0.0 1.0 1.0n 20p 20p 2.0n 5.0n)
+
+* Clock: 1 GHz (Low precharge, High evaluate at 1.0ns)
+Vclk clk 0 PULSE(0.0 1.0 1.0n 20p 20p 1.0n 2.0n)
+
+* 4-Bit RCA Chain (Domino Logic)
+XFA0 a0 b0 c0 clk s0 c1 vdd 0 FA_DOMINO
+XFA1 a1 b1 c1 clk s1 c2 vdd 0 FA_DOMINO
+XFA2 a2 b2 c2 clk s2 c3 vdd 0 FA_DOMINO
+XFA3 a3 b3 c3 clk s3 c4 vdd 0 FA_DOMINO
+
+CL0 s0 0 2f
+CL1 s1 0 2f
+CL2 s2 0 2f
+CL3 s3 0 2f
+CLC c4 0 2f
+
+.control
+tran 1p 3.0n
+
+* Worst-Case Carry Propagation Delay: C0 (50%) -> C4 (50%)
+meas tran tp_carry trig v(c0) val=0.5 rise=1 targ v(c4) val=0.5 rise=1
+meas tran tp_c1 trig v(c0) val=0.5 rise=1 targ v(c1) val=0.5 rise=1
+meas tran tp_c2 trig v(c0) val=0.5 rise=1 targ v(c2) val=0.5 rise=1
+meas tran tp_c3 trig v(c0) val=0.5 rise=1 targ v(c3) val=0.5 rise=1
+
+* Average Power Dissipation: Integral of Vdd * I(Vdd) / Period
+meas tran avg_curr avg i(Vdd) from=1.0n to=2.0n
+let avg_pwr = -avg_curr * 1.0
+print avg_pwr tp_carry
+
+* Export waveforms to raw table
+wrdata /mnt/c/Users/saksh/.gemini/antigravity/scratch/rca_90nm_project/results/domino_waveforms.txt v(c0) v(c1) v(c2) v(c3) v(c4)
+quit
+.endc
+.end
