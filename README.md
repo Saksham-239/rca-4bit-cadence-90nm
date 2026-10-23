@@ -38,13 +38,26 @@ RCA_4Bit_Cadence_90nm/
 │   ├── devmap_gpdk090.map              # Device map for GPDK090 (maps nmos_90nm/pmos_90nm -> nmos1v/pmos1v)
 │   ├── devmap_analogLib.map            # Device map for generic analogLib
 │   ├── model_alias.scs                 # Spectre model alias file for GPDK090
-│   └── fix_symbols.il                  # SKILL script to generate standardized clean symbols
+│   ├── fix_symbols.il                  # SKILL script to generate standardized clean symbols
+│   ├── create_all_testbenches.il       # SKILL script: AUTO-CREATES tb_rca4_static, tb_rca4_domino, tb_rca4_c2mos
+│   └── testbenches/                    # Ready-to-simulate Spectre testbench decks (.scs)
+│       ├── tb_rca4_static.scs
+│       ├── tb_rca4_domino.scs
+│       └── tb_rca4_c2mos.scs
 │
 ├── schematics_and_waveforms/           # Reference diagrams and simulation results
 │   ├── static_cmos_schematic.png       # 28T Mirror Static Full Adder schematic
 │   ├── domino_schematic.png            # Compound Domino Full Adder schematic
 │   ├── c2mos_schematic.png             # Clock-gated C²MOS Full Adder schematic
-│   └── rca_carry_ripple_comparison.png # 4-stage carry ripple transient waveform comparison
+│   ├── rca_carry_ripple_comparison.png # 4-stage carry ripple transient waveform comparison
+│   └── testbenches/                    # Screenshots of the exact Cadence Virtuoso testbenches & ADE L
+│       ├── tb_rca4_static_schematic.png
+│       ├── tb_rca4_static_waveforms.jpg
+│       ├── tb_rca4_domino_schematic.png
+│       ├── tb_rca4_domino_adel.png
+│       ├── tb_rca4_domino_waveforms.png
+│       ├── tb_rca4_c2mos_schematic.png
+│       └── tb_rca4_c2mos_adel.png
 │
 ├── standalone_simulation/              # Standalone Python/Ngspice simulation suite (No VM required)
 │   ├── runner.py                       # Automated benchmark script (executes ngspice and plots)
@@ -149,51 +162,46 @@ You will see confirmation messages for each cell. Now opening the symbol view of
 
 ---
 
-### Step 6: Create Testbench & Run Simulation in ADE L
+### Step 6: Create or Auto-Generate Testbenches & Simulate in ADE L
 
-#### A. Create the Testbench Cellview
-1. In Library Manager, create a new schematic view: `rca / tb_rca4_static / schematic`.
-2. Press `I` (Instance) and add:
-   * `rca / RCA4_STATIC / symbol`
-   * `analogLib / vdc / symbol` for $V_{DD} = 1.0\text{ V}$
-   * `analogLib / gnd / symbol` for ground
-   * `analogLib / vdc / symbol` for inputs:
-     * $A[3:0] = 1111_2$ (connect $a_0, a_1, a_2, a_3$ to $1.0\text{ V}$)
-     * $B[3:0] = 0000_2$ (connect $b_0, b_1, b_2, b_3$ to $0.0\text{ V}$)
-   * `analogLib / vpulse / symbol` for Carry-in ($c_{in}$):
-     * **Voltage 1:** `0 V`
-     * **Voltage 2:** `1.0 V`
-     * **Delay time:** `1.0 ns`
-     * **Rise time:** `20 ps`
-     * **Fall time:** `20 ps`
-     * **Pulse width:** `2.0 ns`
-     * **Period:** `5.0 ns`
-   * `analogLib / cap / symbol` loads on $s_0, s_1, s_2, s_3, cout$: `2 fF` each.
-3. Save and Check (press `Shift + X`).
+You have two easy ways to run the testbenches in Virtuoso:
 
-#### B. Launch ADE L & Configure Spectre
-1. In the schematic window, click **Launch** $\rightarrow$ **ADE L**.
-2. Set Simulator to **spectre** (`Setup` $\rightarrow$ `Simulator/Directory/Host`).
-3. Set Model Libraries (`Setup` $\rightarrow$ `Model Libraries...`):
-   * Add: `/eda/gpdk090/models/spectre/gpdk090.scs` (Section: `stat` or `tt`)  
-     *(Locate `gpdk090.scs` in your VM's PDK path)*
-   * Add: `/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/model_alias.scs`
-4. Setup Transient Analysis (`Analyses` $\rightarrow$ `Choose...`):
-   * Select **`tran`**
-   * **Stop Time:** `3n`
-   * **Accuracy Defaults:** `moderate`
-5. Select Outputs to Plot (`Outputs` $\rightarrow$ `To Be Plotted` $\rightarrow$ `Select On Design`):
-   * Click the wire nets: `/cin`, `/s0`, `/s1`, `/s2`, `/s3`, `/cout`.
-6. Click **Netlist and Run** (Green Play icon).
+#### Method 1: Automatic Testbench Generation via SKILL (Zero-Wiring!)
+Instead of manually placing and wiring dozens of sources and pins, simply load the included SKILL script in Virtuoso CIW:
+```lisp
+load("/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/create_all_testbenches.il")
+```
+This automatically builds and saves all three fully-wired testbenches in your `rca` library:
+* **`tb_rca4_static`** (Static CMOS)
+* **`tb_rca4_domino`** (Domino Logic with 500 MHz evaluation clock)
+* **`tb_rca4_c2mos`** ($C^2\text{MOS}$ with anti-phase $\phi$ and $\bar{\phi}$ clocks)
 
-#### C. Observe the Ripple Effect
-* When $C_{in}$ rises at $t = 1.00\text{ ns}$, the carry propagates through Full Adders 0, 1, 2, and 3 sequentially.
-* In the waveform viewer (VIVA), you will observe the distinct stepped rising edges:
-  * $t \approx 1.08\text{ ns}$: $S_0$ settles
-  * $t \approx 1.15\text{ ns}$: $S_1$ settles
-  * $t \approx 1.21\text{ ns}$: $S_2$ settles
-  * $t \approx 1.25\text{ ns}$: $C_{out}$ settles ($t_{pd} \approx 250\text{ ps}$)
-  * $t \approx 1.26\text{ ns}$: $S_3$ settles
+You can now open any of them in Library Manager, click **Launch $\rightarrow$ ADE L**, set `gpdk090.scs` + `model_alias.scs`, choose `tran 3n` (or `20n` for clocked adders), and click **Netlist and Run**!
+
+#### Method 2: Command-Line Simulation via Spectre
+Teammates can also simulate the pre-built Spectre decks directly from the Linux terminal:
+```bash
+cd /mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/testbenches
+spectre tb_rca4_static.scs
+spectre tb_rca4_domino.scs
+spectre tb_rca4_c2mos.scs
+```
+View the waveforms immediately in ViVA:
+```bash
+viva tb_rca4_static.raw &
+```
+
+#### Method 3: Manual Schematic Construction (Visual Reference)
+If teammates prefer or are required to build the testbenches by hand in schematic editor:
+* Reference schematics and ADE L settings are in `schematics_and_waveforms/testbenches/`:
+  * `tb_rca4_static_schematic.png`
+  * `tb_rca4_domino_schematic.png` & `tb_rca4_domino_adel.png`
+  * `tb_rca4_c2mos_schematic.png` & `tb_rca4_c2mos_adel.png`
+
+#### Simulation Waveform Signatures:
+* **Static CMOS (`tb_rca4_static`):** When $C_{in}$ rises at $t = 1.00\text{ ns}$, the carry propagates through stages 0, 1, 2, and 3 sequentially ($S_0 \to S_1 \to S_2 \to C_{out} \to S_3$) with total carry delay $t_{pd} \approx 220-250\text{ ps}$.
+* **Domino Logic (`tb_rca4_domino`):** Dynamic evaluate/precharge pulses with clock $\phi$, producing the fastest carry propagation delay ($t_{pd} \approx 150-160\text{ ps}$).
+* **$C^2\text{MOS}$ (`tb_rca4_c2mos`):** Full rail-to-rail dynamic latching clocked by $\phi$ and $\bar{\phi}$, holding outputs clean without static leakage.
 
 ---
 

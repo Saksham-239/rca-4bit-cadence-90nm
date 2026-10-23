@@ -1,0 +1,54 @@
+// ==============================================================================
+// Cadence Spectre Testbench: 4-Bit Static CMOS Ripple Carry Adder
+// Technology: gpdk090 (90nm Bulk CMOS, VDD = 1.0V)
+// ==============================================================================
+
+simulator lang=spectre
+global 0
+
+// Include PDK Model & Spectre Alias
+// In your VM, adjust PDK path if located at /eda/gpdk090 or /home/work/gpdk090
+include "/home/work/gpdk090/models/spectre/gpdk090.scs" section=stat
+include "../model_alias.scs"
+
+// Include Circuit Netlists
+simulator lang=spice
+.include "../rca_all_designs.sp"
+simulator lang=spectre
+
+// DUT: 4-Bit Static CMOS RCA
+// Order: a0 a1 a2 a3 b0 b1 b2 b3 cin s0 s1 s2 s3 cout vdd gnd
+XRCA (a0 a1 a2 a3 b0 b1 b2 b3 cin s0 s1 s2 s3 cout vdd 0) RCA4_STATIC
+
+// Power Supply (VDD = 1.0 V)
+Vdd (vdd 0) vsource dc=1.0 type=dc
+
+// Input Stimulus: Worst-Case Carry Ripple Propagation
+// A = 1111 (all 1), B = 0000 (all 0)
+Va0 (a0 0) vsource dc=1.0 type=dc
+Va1 (a1 0) vsource dc=1.0 type=dc
+Va2 (a2 0) vsource dc=1.0 type=dc
+Va3 (a3 0) vsource dc=1.0 type=dc
+
+Vb0 (b0 0) vsource dc=0.0 type=dc
+Vb1 (b1 0) vsource dc=0.0 type=dc
+Vb2 (b2 0) vsource dc=0.0 type=dc
+Vb3 (b3 0) vsource dc=0.0 type=dc
+
+// Carry-in Step Pulse (0 -> 1V transition at 1.0ns)
+Vcin (cin 0) vsource type=pulse val0=0.0 val1=1.0 period=5n delay=1n rise=20p fall=20p width=2n
+
+// Output Load Capacitors (2 fF each)
+CL0 (s0 0) capacitor c=2f
+CL1 (s1 0) capacitor c=2f
+CL2 (s2 0) capacitor c=2f
+CL3 (s3 0) capacitor c=2f
+CLC (cout 0) capacitor c=2f
+
+// Simulation Options & Transient Analysis
+simulatorOptions options reltol=1e-3 vabstol=1e-6 iabstol=1e-12 temp=27 tnom=27
+tran tran stop=3n errpreset=moderate write="spectre.ic" writefinal="spectre.fc" annotate=status
+
+// Save Outputs to Waveform File
+save cin s0 s1 s2 s3 cout
+saveOptions options save=allpub
