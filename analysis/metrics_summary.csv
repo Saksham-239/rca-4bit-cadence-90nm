@@ -1,0 +1,4 @@
+logic_family,pmos_per_fa,nmos_per_fa,devices_per_fa,four_stage_total,clocking,calculator_delay_ps,average_power_uw,pdp_exact_fj,pdp_rounded_fj,transient_timing_notes
+Static CMOS,14,14,28,112,No clock,251.81,13.25,3.3364825,3.34,"Cin -> Cout: 248 ps; Cin -> S3: 265 ps"
+C2MOS,16,16,32,128,Complementary clocks (2 ns period / 500 MHz),260.75,29.49,7.6895175,7.69,"Clocked output transitions across Cin intervals (A=1011, B=1100)"
+Domino Logic,11,15,26,104,Single clock,222.35,30.76,6.8394860,6.84,"Cin -> S2: 232 ps (A=0111, B=1000; Pi=1 carry propagation)"

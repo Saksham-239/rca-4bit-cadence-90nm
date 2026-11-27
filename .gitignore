@@ -1,4 +1,4 @@
-# Cadence Virtuoso Lock and Log Files
+# Cadence Virtuoso Lock, Log, and Simulation Outputs
 *.cdslck
 *.cdslck*
 cds.lib.bak
@@ -13,19 +13,30 @@ artist_states/
 simulation/
 Sim/
 
-# Python Cache
+# LaTeX Build Artifacts & Caches
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+.tectonic-cache/
+
+# Python Cache & Virtual Environments
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
+standalone_simulation/results/
+standalone_simulation/plots/
 
-# OS Specific
+# OS & Editor Files
 Thumbs.db
 ehthumbs.db
 .DS_Store
-
-# Temporary editor backups
 *~
 *.swp
 *.swo

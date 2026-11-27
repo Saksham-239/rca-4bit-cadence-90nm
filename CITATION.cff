@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: "Comparative Analysis of 4-Bit Ripple-Carry Adders: Static CMOS, C²MOS, and Domino Logic in 90nm CMOS"
+message: "If you use the SPICE netlists, Cadence SKILL scripts, or analysis from this repository, please cite this work."
+type: software
+authors:
+  - family-names: Arora
+    given-names: Saksham
+repository-code: "https://github.com/Saksham-239/rca-4bit-cadence-90nm"
+license: MIT
+keywords:
+  - vlsi
+  - ripple-carry-adder
+  - cadence-virtuoso
+  - gpdk090
+  - static-cmos
+  - c2mos
+  - domino-logic
+  - low-power-vlsi

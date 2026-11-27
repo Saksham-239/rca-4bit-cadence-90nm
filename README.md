@@ -1,253 +1,228 @@
-# 4-Bit Ripple Carry Adder (RCA) Design & Evaluation Suite (90nm CMOS)
+# Comparative Analysis of 4-Bit Ripple-Carry Adders (90 nm CMOS)
 
-[![Virtuoso IC6.1.7](https://img.shields.io/badge/Cadence%20Virtuoso-IC6.1.7-blue.svg)](https://www.cadence.com)
-[![Simulator Spectre](https://img.shields.io/badge/Simulator-Spectre%20%2F%20MMSIM15-orange.svg)]()
-[![PDK GPDK090](https://img.shields.io/badge/PDK-gpdk090%20(90nm)-green.svg)]()
-[![Ngspice Standalone](https://img.shields.io/badge/Standalone-Ngspice%2038%2B-lightgrey.svg)]()
+[![Cadence Virtuoso](https://img.shields.io/badge/EDA-Cadence%20Virtuoso%20IC6.1.7-blue.svg)](https://www.cadence.com)
+[![Spectre](https://img.shields.io/badge/Simulator-Spectre%20%2F%20MMSIM-orange.svg)](https://www.cadence.com)
+[![PDK](https://img.shields.io/badge/PDK-gpdk090%20(90nm%20CMOS)-2ea44f.svg)]()
+[![Supply](https://img.shields.io/badge/Nominal%20Supply-1.0%20V-informational.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-lightgrey.svg)](LICENSE)
 
-This repository contains the complete design, transistor netlists, SKILL automation scripts, simulation testbenches, and benchmark reports for a **4-Bit Ripple Carry Adder (RCA)** designed at the **90nm CMOS** technology node ($V_{DD} = 1.0\text{ V}$).
+Transistor-level design, schematic capture, Spectre simulation, and comparative power–delay–complexity evaluation of **4-bit Ripple-Carry Adders (RCA)** implemented in **Static CMOS**, **Clocked CMOS ($\text{C}^2\text{MOS}$)**, and **Domino Dynamic Logic** at the **90 nm CMOS (`gpdk090`)** technology node ($V_{DD} = 1.0\text{ V}$).
 
-Three distinct digital VLSI logic styles are implemented, simulated, and benchmarked:
-1. **Static CMOS** (28-Transistor Mirror Topology per Full Adder, 112 MOSFETs total)
-2. **Domino Logic** (Compound Dynamic Logic with 90nm Subthreshold Weak Keeper, 80 MOSFETs total)
-3. **$C^2\text{MOS}$** (Anti-Phase Clock-Gated Latched Logic, 64 MOSFETs total)
+> **Case Study Report:** [`report/case_study.pdf`](report/case_study.pdf) · **Detailed Analysis:** [`analysis/comparative_analysis.md`](analysis/comparative_analysis.md) · **Technical Audit:** [`analysis/technical_audit.md`](analysis/technical_audit.md)
 
 ---
 
-## 1. Benchmark & Performance Summary
+## Key Findings & Benchmark Summary
 
-All three architectures were simulated under identical conditions: $V_{DD} = 1.0\text{ V}$, $T = 27^\circ\text{C}$, $90\text{ nm}$ BSIM4 models, and identical output loads ($C_L = 2\text{ fF}$ per output pin). The worst-case carry ripple vector was applied ($A = 1111_2$, $B = 0000_2$, $C_{in} = 0 \to 1$ step transition), forcing the carry signal to ripple through the full 4-stage critical path ($C_0 \to C_1 \to C_2 \to C_3 \to C_4$).
+In this study, **Domino dynamic logic** serves as the focal technique for high-speed, compact carry-path evaluation and is benchmarked against unclocked **Static CMOS** and complementary-clocked **$\text{C}^2\text{MOS}$** realizations of the same four-stage RCA architecture.
 
-| Architecture | Transistor Count (4-Bit) | Worst-Case Delay ($t_{pd}$) | Average Power ($P_{avg}$) | Power-Delay Product (PDP) | Key Strengths |
-| :--- | :---: | :---: | :---: | :---: | :--- |
-| **Domino Logic** | **80 MOSFETs** | **$151.92\text{ ps}$** *(Fastest)* | **$29.39\text{ }\mu\text{W}$** | **$4.464\text{ fJ}$** *(Best)* | 31.1% faster than Static, lowest dynamic delay. |
-| **Static CMOS** | 112 MOSFETs | $220.51\text{ ps}$ | $43.33\text{ }\mu\text{W}$ | $9.554\text{ fJ}$ | Full rail-to-rail noise margin, zero static leakage. |
-| **$C^2\text{MOS}$** | **64 MOSFETs** *(Smallest)*| $180.20\text{ ps}$ | $356.44\text{ }\mu\text{W}$ | $64.231\text{ fJ}$ | 42.8% smaller area than Static, eliminates race conditions. |
+| Logic Family | Devices / FA (PMOS / NMOS) | 4-Bit Total Devices | Clocking Scheme | Calculator Delay ($t_{pd}$) | Average Power ($P_{avg}$) | Power-Delay Product (PDP) | Transient Timing / Vector Notes |
+| :--- | :---: | :---: | :--- | :---: | :---: | :---: | :--- |
+| **Static CMOS** | 28 (14P / 14N) | 112 | Unclocked | $251.81\text{ ps}$ | **$13.25\ \mu\text{W}$** *(Lowest)* | **$3.34\text{ fJ}$** *(Best)* | $C_{in}\!\to C_{out}$: $248\text{ ps}$; $C_{in}\!\to S_3$: $265\text{ ps}$ |
+| **$\text{C}^2\text{MOS}$** | 32 (16P / 16N) | 128 | Complementary clocks (`clk`, `clkb`, 2 ns period) | $260.75\text{ ps}$ | $29.49\ \mu\text{W}$ | $7.69\text{ fJ}$ | $A=1011_2\ (11)$, $B=1100_2\ (12) \to 23 / 24$ |
+| **Domino Logic** | **26** (11P / 15N) | **104** *(Lowest)* | Single clock (`clk`, precharge/evaluate) | **$222.35\text{ ps}$** *(Fastest)* | $30.76\ \mu\text{W}$ | $6.84\text{ fJ}$ | $A=0111_2\ (7)$, $B=1000_2\ (8) \to 15 / 16$ ($C_{in}\!\to S_2$: $232\text{ ps}$) |
+
+**Central Engineering Insight:**
+A compact dynamic cell and a low-power implementation are **not synonymous**. Although Domino achieves the **lowest per-cell transistor count** (`26` MOSFETs/FA; `104` total) and the **lowest calculator delay** (`222.35 ps`, **11.7% faster** than Static CMOS and **14.7% faster** than $\text{C}^2\text{MOS}$), cyclic precharge/evaluation switching yields the **highest average power** (`30.76 µW`, $2.32\times$ Static CMOS). Unclocked **Static CMOS** leads on both **average power (`13.25 µW`)** and **PDP (`3.34 fJ`)**—achieving a **51.2% lower PDP** than Domino (`6.84 fJ`) and **56.6% lower PDP** than $\text{C}^2\text{MOS}$ (`7.69 fJ`).
+
+<p align="center">
+  <img src="assets/plots/combined_performance.png" alt="Four-Bit RCA Performance Overview: PDP, Propagation Delay, and Average Power" width="95%">
+</p>
+
+<details>
+<summary><strong>View Individual Metric Charts &amp; Exact PDP Verification</strong></summary>
+
+$$\mathrm{PDP}\ (\mathrm{fJ}) = \frac{P_{avg}\ (\mu\mathrm{W}) \times t_{pd}\ (\mathrm{ps})}{1000}$$
+
+* **Static CMOS:** $13.25 \times 251.81 / 1000 = 3.3365\text{ fJ} \rightarrow \mathbf{3.34\text{ fJ}}$
+* **$\text{C}^2\text{MOS}$:** $29.49 \times 260.75 / 1000 = 7.6895\text{ fJ} \rightarrow \mathbf{7.69\text{ fJ}}$
+* **Domino Logic:** $30.76 \times 222.35 / 1000 = 6.8395\text{ fJ} \rightarrow \mathbf{6.84\text{ fJ}}$
+
+| Power-Delay Product | Propagation Delay | Average Power |
+| :---: | :---: | :---: |
+| ![PDP Comparison](assets/plots/pdp_comparison.png) | ![Delay Comparison](assets/plots/delay_comparison.png) | ![Power Comparison](assets/plots/power_comparison.png) |
+
+</details>
 
 ---
 
-## 2. Repository Structure
+## Architecture & Transistor-Level Organization
+
+Each 1-bit full adder computes sum $S_i$ and carry-out $C_{i+1}$ from operand bits $A_i, B_i$ and incoming carry $C_i$:
+
+$$P_i = A_i \oplus B_i, \qquad G_i = A_i B_i, \qquad S_i = P_i \oplus C_i, \qquad C_{i+1} = G_i + P_i C_i$$
+
+Cascading four identical stages connects $C_{i+1}$ of slice $i$ to $C_i$ of slice $i+1$ ($C_0 = C_{in}$, final carry $C_4 = C_{out}$):
 
 ```
-RCA_4Bit_Cadence_90nm/
-├── README.md                           # This complete setup and execution guide
-├── .gitignore                          # EDA lock/log and temporary file exclusion
+(A0, B0, Cin) ──► [ FA0 ] ──► S0, C1 ──► [ FA1 ] ──► S1, C2 ──► [ FA2 ] ──► S2, C3 ──► [ FA3 ] ──► S3, Cout
+```
+
+### Logic Family Implementations (`cadence/rca_all_designs.sp`)
+
+1. **Static CMOS (`FA_STATIC` — 28T Mirror Topology):**
+   Complementary PMOS pull-up (PUN) and NMOS pull-down (PDN) networks with static output inverters for `sum` and `cout`. Delivers full rail-to-rail output restoration and requires no evaluation clock.
+2. **$\text{C}^2\text{MOS}$ (`FA_C2MOS` — 32T Clock-Gated Topology):**
+   Adds anti-phase clock-gating transistors (`clk`, `clkb`) in series with both the carry (`14T`) and sum (`18T`) mirror stages, holding output logic states during the non-evaluating phase at the cost of higher transistor count and clock capacitance.
+3. **Domino Logic (`FA_DOMINO` — 26T Footed Dynamic Topology):**
+   Separates the cell into a **10T footed dynamic carry cone** (PMOS precharge `Mp_cpre`, weak PMOS keeper `Mp_ckp` at $W = 100\text{ nm}$ against 90 nm subthreshold leakage, NMOS evaluation tree, NMOS footer `Mn_cfoot`, and monotonic static inverter) and a **16T sum stage** fed by the internal dynamic node `dyn_cout`.
+
+---
+
+## Cadence Virtuoso Schematics
+
+All nine Cadence Virtuoso Schematic Editor captures (1-bit full adder cells, 4-stage hierarchical RCA chains, and simulation testbenches) are archived under [`assets/schematics/`](assets/schematics/).
+
+### 1. Static CMOS (`FA_STATIC` / `RCA4_STATIC` / `tb_rca4_static`)
+
+| 1-Bit Full Adder (28T) | 4-Bit Ripple-Carry Adder (112T) | Simulation Testbench |
+| :---: | :---: | :---: |
+| ![Static FA Schematic](assets/schematics/static/fa_static_schematic.png) | ![Static RCA4 Schematic](assets/schematics/static/rca4_static_schematic.png) | ![Static Testbench Schematic](assets/schematics/static/tb_static_schematic.png) |
+
+### 2. $\text{C}^2\text{MOS}$ (`FA_C2MOS` / `RCA4_C2MOS` / `tb_rca4_c2mos`)
+
+| 1-Bit Full Adder (32T) | 4-Bit Ripple-Carry Adder (128T) | Simulation Testbench |
+| :---: | :---: | :---: |
+| ![C2MOS FA Schematic](assets/schematics/c2mos/fa_c2mos_schematic.png) | ![C2MOS RCA4 Schematic](assets/schematics/c2mos/rca4_c2mos_schematic.png) | ![C2MOS Testbench Schematic](assets/schematics/c2mos/tb_c2mos_schematic.png) |
+
+### 3. Domino Logic (`FA_DOMINO` / `RCA4_DOMINO` / `tb_rca4_domino`)
+
+| 1-Bit Full Adder (26T) | 4-Bit Ripple-Carry Adder (104T) | Simulation Testbench |
+| :---: | :---: | :---: |
+| ![Domino FA Schematic](assets/schematics/domino/fa_domino_schematic.png) | ![Domino RCA4 Schematic](assets/schematics/domino/rca4_domino_schematic.png) | ![Domino Testbench Schematic](assets/schematics/domino/tb_domino_schematic.png) |
+
+---
+
+## Simulation Waveforms & Functional Verification
+
+### Static CMOS Transient Response & Carry-Ripple Progression
+* **Multi-Cycle Transient (`static_output_waveforms.png`):** Demonstrates clean rail-to-rail switching across `s0–s3` and `cout` synchronized to periodic `cin` transitions.
+* **Single-Step Carry Ripple (`static_carry_ripple_step.jpg`):** Captures the sequential carry propagation staircase from $C_{in}$ rising at `1.000 ns` through `s0` ($\approx 80\text{ ps}$), `s1` ($\approx 148\text{ ps}$), `s2` ($\approx 212\text{ ps}$), `cout` (**$248\text{ ps}$**), and `s3` (**$265\text{ ps}$**).
+
+| Multi-Cycle ViVA Output | Zoomed Single-Step Carry-Ripple Staircase |
+| :---: | :---: |
+| ![Static CMOS Output Waveforms](assets/waveforms/static_output_waveforms.png) | ![Static CMOS Carry Ripple Step](assets/waveforms/static_carry_ripple_step.jpg) |
+
+### $\text{C}^2\text{MOS}$ Functional Verification ($A = 1011_2 = 11$, $B = 1100_2 = 12$, $500\text{ MHz}$ Clocks)
+* **$C_{in} = 0$ (`0–10 ns`, `20–30 ns`):** $\{C_{out}, S_3, S_2, S_1, S_0\} = 10111_2 = 23_{10}$
+* **$C_{in} = 1$ (`10–20 ns`, `30–40 ns`):** $\{C_{out}, S_3, S_2, S_1, S_0\} = 11000_2 = 24_{10}$
+
+![C2MOS Output Waveforms](assets/waveforms/c2mos_output_waveforms.png)
+
+### Domino Logic Carry-Propagate Verification ($A = 0111_2 = 7$, $B = 1000_2 = 8$, All $P_i = 1$)
+* **$C_{in} = 0$ (Evaluate `clk = 1`):** $\{C_{out}, S_3, S_2, S_1, S_0\} = 01111_2 = 15_{10}$
+* **$C_{in} = 1$ (Evaluate `clk = 1`):** $\{C_{out}, S_3, S_2, S_1, S_0\} = 10000_2 = 16_{10}$, forcing carry propagation through every bit slice ($C_{in} \to S_2$ annotated at **$232\text{ ps}$**).
+
+![Domino Output Waveforms](assets/waveforms/domino_output_waveforms.png)
+
+---
+
+## Methodological Scope & Engineering Caveats
+
+To interpret this dataset rigorously (see [`analysis/technical_audit.md`](analysis/technical_audit.md)):
+* **Schematic-Level Simulation:** Reported values reflect pre-layout schematic simulations in `gpdk090` (`1.0 V`) without post-layout parasitic RC extraction, PVT corner sweeps, or Monte Carlo variation.
+* **Test Vector & Clock Scope:** The captured $\text{C}^2\text{MOS}$ and Domino waveforms evaluate different functional vectors (`11 + 12` vs. `7 + 8`), and Static CMOS's multi-cycle waveform operand pattern is unannotated. Aggregate average power includes clock and precharge activity without isolating clock-tree vs. datapath switching energy.
+* **PDP Definition:** Reported PDPs are computed directly from $P_{avg} \cdot t_{pd} / 1000$ rather than integrating $V_{DD}I_{DD}(t)\,dt$ across an isolated addition window.
+
+---
+
+## Repository Structure
+
+```text
+rca-4bit-cadence-90nm/
+├── README.md                              # Project documentation, visuals, and reproduction guide
+├── LICENSE                                # MIT License
+├── CITATION.cff                           # Machine-readable citation metadata
 │
-├── cadence/                            # Cadence Virtuoso IC6.1.7 import & setup files
-│   ├── rca_all_designs.sp              # Complete SPICE netlist (Static, Domino, C2MOS)
-│   ├── devmap_gpdk090.map              # Device map for GPDK090 (maps nmos_90nm/pmos_90nm -> nmos1v/pmos1v)
-│   ├── devmap_analogLib.map            # Device map for generic analogLib
-│   ├── model_alias.scs                 # Spectre model alias file for GPDK090
-│   ├── fix_symbols.il                  # SKILL script to generate standardized clean symbols
-│   ├── create_all_testbenches.il       # SKILL script: AUTO-CREATES tb_rca4_static, tb_rca4_domino, tb_rca4_c2mos
-│   └── testbenches/                    # Ready-to-simulate Spectre testbench decks (.scs)
+├── cadence/                               # Cadence Virtuoso IC6.1.7 & Spectre (gpdk090) suite
+│   ├── rca_all_designs.sp                 # Verified netlist (FA_STATIC 28T, FA_C2MOS 32T, FA_DOMINO 26T)
+│   ├── devmap_gpdk090.map                 # GPDK090 CDL/SPICE device mapping
+│   ├── devmap_analogLib.map               # Generic analogLib device mapping
+│   ├── model_alias.scs                    # Spectre model alias definitions for gpdk090
+│   ├── fix_symbols.il                     # SKILL script: standardized schematic symbol generator
+│   ├── create_all_testbenches.il          # SKILL script: automated testbench builder
+│   └── testbenches/                       # Standalone Spectre simulation decks (.scs)
 │       ├── tb_rca4_static.scs
-│       ├── tb_rca4_domino.scs
-│       └── tb_rca4_c2mos.scs
+│       ├── tb_rca4_c2mos.scs
+│       └── tb_rca4_domino.scs
 │
-├── schematics_and_waveforms/           # Reference diagrams and simulation results
-│   ├── static_cmos_schematic.png       # 28T Mirror Static Full Adder schematic
-│   ├── domino_schematic.png            # Compound Domino Full Adder schematic
-│   ├── c2mos_schematic.png             # Clock-gated C²MOS Full Adder schematic
-│   ├── rca_carry_ripple_comparison.png # 4-stage carry ripple transient waveform comparison
-│   └── testbenches/                    # Screenshots of the exact Cadence Virtuoso testbenches & ADE L
-│       ├── tb_rca4_static_schematic.png
-│       ├── tb_rca4_static_waveforms.jpg
-│       ├── tb_rca4_domino_schematic.png
-│       ├── tb_rca4_domino_adel.png
-│       ├── tb_rca4_domino_waveforms.png
-│       ├── tb_rca4_c2mos_schematic.png
-│       └── tb_rca4_c2mos_adel.png
+├── assets/                                # Cadence captures & publication-grade charts
+│   ├── schematics/{static,c2mos,domino}/  # 1-bit FA, 4-bit RCA, and testbench schematics (9 PNGs)
+│   ├── waveforms/                         # Cadence ViVA transient waveforms & carry-ripple step
+│   └── plots/                             # MATLAB/Python comparison figures (PNG + vector PDF)
 │
-├── standalone_simulation/              # Standalone Python/Ngspice simulation suite (No VM required)
-│   ├── runner.py                       # Automated benchmark script (executes ngspice and plots)
-│   ├── render_schematics.py            # Schematic layout renderer
-│   ├── models/ptm_90nm.pm              # BSIM4 90nm Predictive Technology Model
-│   └── netlists/                       # Standalone SPICE decks (.cir)
-│       ├── rca4_static.cir
-│       ├── rca4_domino.cir
-│       └── rca4_c2mos.cir
+├── analysis/                              # Written analysis, literature synthesis, and plot scripts
+│   ├── comparative_analysis.md            # Architecture, waveform, and trade-off deep dive
+│   ├── technical_audit.md                 # Netlist verification, arithmetic checks, and scope caveats
+│   ├── literature_review.md               # Synthesis of 12 peer-reviewed adder/CMOS studies
+│   ├── metrics_summary.csv                # Machine-readable benchmark dataset
+│   └── scripts/                           # Reproducible plot generators (.m and .py)
 │
-└── docs/                               # Project reports and presentation decks
-    ├── 4bit_RCA_ProjectReview.pdf
-    ├── Project Review 1_ 4-Bit RCA Design & Evaluation (90nm).pdf
-    └── benchmark_results.md
+├── report/                                # Formal Case Study Deliverable
+│   ├── case_study.pdf                     # Final 17-page VLSI System Design Case Study report
+│   └── latex/                             # Editable LaTeX source & BibTeX bibliography
+│
+└── standalone_simulation/                 # Optional open-source Ngspice + PTM 90nm harness
+    ├── README.md
+    ├── runner.py
+    ├── models/ptm_90nm.pm
+    └── netlists/
 ```
 
 ---
 
-## 3. Running in Cadence Virtuoso (Getintopc VM Workstation)
+## Reproducing the Workflow
 
-This project is pre-configured to run directly on the **Getintopc Cadence IC6.1.7 VM** image:
-* **Host Platform:** VMware Workstation
-* **Guest OS:** Red Hat Enterprise Linux 6 (RHEL6 64-bit)
-* **Default VM Password:** `111111`
-* **Pre-installed Tools:** Cadence Virtuoso IC6.1.7, MMSIM 15 (Spectre), GPDK090 PDK
-
-Follow the steps below to import and simulate the designs.
-
----
-
-### Step 1: Transfer Project Files into the VM
-
-#### Method A: VMware Shared Folders (Recommended)
-1. In VMware Workstation, click **VM** $\rightarrow$ **Settings...** $\rightarrow$ **Options** tab $\rightarrow$ **Shared Folders**.
-2. Select **Always enabled**.
-3. Click **Add...**, browse to this folder (`RCA_4Bit_Cadence_90nm`), and name the share `RCA_4Bit_Cadence_90nm`.
-4. Inside the Linux VM, the folder is accessible at:
+### 1. Cadence Virtuoso & Spectre (`gpdk090`)
+1. Launch Cadence Virtuoso in a working directory configured with `gpdk090` (`cds.lib`), and create library `rca` attached to technology library `gpdk090`.
+2. Import [`cadence/rca_all_designs.sp`](cadence/rca_all_designs.sp) via **File → Import → CDL / SPICE** using device map [`cadence/devmap_gpdk090.map`](cadence/devmap_gpdk090.map) and reference libraries `gpdk090 analogLib basic`.
+3. Generate standardized left-to-right symbols and schematic testbenches from the Virtuoso CIW:
+   ```lisp
+   load("/path/to/cadence/fix_symbols.il")
+   load("/path/to/cadence/create_all_testbenches.il")
+   ```
+4. Alternatively, run batch Spectre simulations directly from [`cadence/testbenches/`](cadence/testbenches/) after adjusting the `gpdk090.scs` PDK include path:
    ```bash
-   /mnt/hgfs/RCA_4Bit_Cadence_90nm
+   spectre tb_rca4_static.scs
+   spectre tb_rca4_c2mos.scs
+   spectre tb_rca4_domino.scs
    ```
-   *(If `/mnt/hgfs` is empty, run `vmhgfs-fuse /mnt/hgfs -o allow_other` in terminal).*
 
-#### Method B: Direct Git Clone inside the VM
-Inside the VM terminal:
-```bash
-git clone <your-private-github-repo-url> ~/RCA_4Bit_Cadence_90nm
+### 2. Regenerating Performance Plots & Report PDF
+* **Python (Matplotlib):**
+  ```bash
+  python analysis/scripts/generate_performance_plots.py
+  ```
+* **MATLAB:**
+  ```matlab
+  run('analysis/scripts/generate_performance_plots.m')
+  ```
+* **LaTeX Case Study PDF (Tectonic):**
+  ```bash
+  cd report/latex && tectonic --outdir .. main.tex
+  ```
+
+### 3. Open-Source `ngspice` Quick Check (No Cadence License Required)
+See [`standalone_simulation/README.md`](standalone_simulation/README.md) for running the PTM 90 nm BSIM4 verification harness.
+
+---
+
+## Author
+
+* **Saksham Arora** (`24BEC0185`) — [@Saksham-239](https://github.com/Saksham-239) — *VLSI System Design Lab, School of Electronics Engineering (SENSE), Vellore Institute of Technology (VIT), Vellore*
+
+---
+
+## License & Citation
+
+This project is released under the [MIT License](LICENSE). If you reference the schematics, netlists, or case study analysis, please cite [`CITATION.cff`](CITATION.cff) or use:
+
+```bibtex
+@misc{arora2026rca90nm,
+  author       = {Arora, Saksham},
+  title        = {Comparative Analysis of 4-Bit Ripple-Carry Adders: Static CMOS, C2MOS, and Domino Logic in 90nm CMOS},
+  year         = {2026},
+  howpublished = {\url{https://github.com/Saksham-239/rca-4bit-cadence-90nm}},
+  note         = {VLSI System Design Lab Case Study}
+}
 ```
-
----
-
-### Step 2: Start Cadence Virtuoso
-
-1. Open a terminal in the VM.
-2. Navigate to your Cadence working directory (where `cds.lib` is located, typically `~/work` or `~/cadence`):
-   ```bash
-   cd ~/work
-   virtuoso &
-   ```
-3. The Virtuoso Command Interpreter Window (CIW) and Library Manager will open.
-
----
-
-### Step 3: Create the Target Library
-
-1. In Virtuoso CIW, click **File** $\rightarrow$ **New** $\rightarrow$ **Library...**
-2. Name the library: `rca`
-3. In the technology selection dialog, choose **Attach to an existing technology library**.
-4. Select **`gpdk090`** and click **OK**.
-
----
-
-### Step 4: Import the SPICE Netlist (`rca_all_designs.sp`)
-
-1. In Virtuoso CIW, click **File** $\rightarrow$ **Import** $\rightarrow$ **CDL / SPICE...**
-2. Fill out the dialog as follows:
-   * **Netlist File:** `/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/rca_all_designs.sp`  
-     *(or your cloned path `~/RCA_4Bit_Cadence_90nm/cadence/rca_all_designs.sp`)*
-   * **Target Library:** `rca`
-   * **Device-map file:** `/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/devmap_gpdk090.map`
-   * **Reference Library List:** `gpdk090 analogLib basic`
-3. Click **OK**.
-4. Virtuoso will automatically synthesize transistor schematics and pin bindings for:
-   * `FA_STATIC` & `RCA4_STATIC` (Static CMOS)
-   * `FA_DOMINO` & `RCA4_DOMINO` (Domino Logic)
-   * `FA_C2MOS` & `RCA4_C2MOS` ($C^2\text{MOS}$)
-
----
-
-### Step 5: Automatically Fix & Clean Symbols
-
-Default symbols generated by SPICE In have random pin placement. A dedicated Cadence SKILL script is included to automatically rebuild clean, professional symbols with:
-* **Inputs on Left:** $a, b, cin, a_0\dots a_3, b_0\dots b_3, clk, clkb$
-* **Outputs on Right:** $sum, cout, s_0\dots s_3$
-* **VDD on Top**
-* **GND on Bottom**
-
-In the Virtuoso CIW command line, type:
-```lisp
-load("/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/fix_symbols.il")
-```
-You will see confirmation messages for each cell. Now opening the symbol view of any cell will show clean, standardized rectangular symbols.
-
----
-
-### Step 6: Create or Auto-Generate Testbenches & Simulate in ADE L
-
-You have two easy ways to run the testbenches in Virtuoso:
-
-#### Method 1: Automatic Testbench Generation via SKILL (Zero-Wiring!)
-Instead of manually placing and wiring dozens of sources and pins, simply load the included SKILL script in Virtuoso CIW:
-```lisp
-load("/mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/create_all_testbenches.il")
-```
-This automatically builds and saves all three fully-wired testbenches in your `rca` library:
-* **`tb_rca4_static`** (Static CMOS)
-* **`tb_rca4_domino`** (Domino Logic with 500 MHz evaluation clock)
-* **`tb_rca4_c2mos`** ($C^2\text{MOS}$ with anti-phase $\phi$ and $\bar{\phi}$ clocks)
-
-You can now open any of them in Library Manager, click **Launch $\rightarrow$ ADE L**, set `gpdk090.scs` + `model_alias.scs`, choose `tran 3n` (or `20n` for clocked adders), and click **Netlist and Run**!
-
-#### Method 2: Command-Line Simulation via Spectre
-Teammates can also simulate the pre-built Spectre decks directly from the Linux terminal:
-```bash
-cd /mnt/hgfs/RCA_4Bit_Cadence_90nm/cadence/testbenches
-spectre tb_rca4_static.scs
-spectre tb_rca4_domino.scs
-spectre tb_rca4_c2mos.scs
-```
-View the waveforms immediately in ViVA:
-```bash
-viva tb_rca4_static.raw &
-```
-
-#### Method 3: Manual Schematic Construction (Visual Reference)
-If teammates prefer or are required to build the testbenches by hand in schematic editor:
-* Reference schematics and ADE L settings are in `schematics_and_waveforms/testbenches/`:
-  * `tb_rca4_static_schematic.png`
-  * `tb_rca4_domino_schematic.png` & `tb_rca4_domino_adel.png`
-  * `tb_rca4_c2mos_schematic.png` & `tb_rca4_c2mos_adel.png`
-
-#### Simulation Waveform Signatures:
-* **Static CMOS (`tb_rca4_static`):** When $C_{in}$ rises at $t = 1.00\text{ ns}$, the carry propagates through stages 0, 1, 2, and 3 sequentially ($S_0 \to S_1 \to S_2 \to C_{out} \to S_3$) with total carry delay $t_{pd} \approx 220-250\text{ ps}$.
-* **Domino Logic (`tb_rca4_domino`):** Dynamic evaluate/precharge pulses with clock $\phi$, producing the fastest carry propagation delay ($t_{pd} \approx 150-160\text{ ps}$).
-* **$C^2\text{MOS}$ (`tb_rca4_c2mos`):** Full rail-to-rail dynamic latching clocked by $\phi$ and $\bar{\phi}$, holding outputs clean without static leakage.
-
----
-
-## 4. Standalone Simulation (Quick Check without Cadence VM)
-
-If you or your teammates want to verify the results immediately on Windows/macOS/Linux without booting the heavy Cadence VM:
-
-### Prerequisites
-* Python 3.8+
-* `ngspice` (installed on Windows via `winget install ngspice` or on Linux `sudo apt install ngspice`)
-* Python packages: `pip install matplotlib numpy`
-
-### Run
-```bash
-cd standalone_simulation
-python runner.py
-```
-This script will:
-1. Run SPICE simulations for Static, Domino, and $C^2\text{MOS}$ 4-bit RCAs.
-2. Measure propagation delays ($t_{pd}$), average power dissipation ($P_{avg}$), and Power-Delay Product (PDP).
-3. Output comparative waveform plots directly to `plots/rca_carry_ripple_comparison.png`.
-
----
-
-## 5. How to Share with Teammates
-
-### Option 1: Private GitHub Repository
-1. Initialize the repo locally and commit:
-   ```powershell
-   cd C:\Users\saksh\Documents\RCA_4Bit_Cadence_90nm
-   git init
-   git add .
-   git commit -m "Initial commit: 4-Bit RCA Cadence Virtuoso 90nm suite"
-   ```
-2. Create and push to a **Private** GitHub repository using the GitHub CLI:
-   ```powershell
-   gh auth login
-   gh repo create rca-4bit-cadence-90nm --private --source=. --push
-   ```
-   *(Or create a new private repo on [github.com](https://github.com/new) and run:)*
-   ```powershell
-   git remote add origin https://github.com/<your-username>/rca-4bit-cadence-90nm.git
-   git branch -M main
-   git push -u origin main
-   ```
-3. Add teammates: On GitHub, go to **Settings** $\rightarrow$ **Collaborators** $\rightarrow$ **Add people**.
-
-### Option 2: Pre-Packaged ZIP Archive
-A pre-packaged, ready-to-share ZIP archive (`RCA_4Bit_Cadence_90nm.zip`) is available directly on this machine. You can send it via Google Drive, Discord, Teams, or USB.
